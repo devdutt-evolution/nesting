@@ -1,16 +1,38 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Query,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FlightService } from './flight.service';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiBody,
   ApiConflictResponse,
+  ApiConsumes,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiProperty,
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { CreateFlightDto } from './dto';
 import { JwtGuard } from 'src/auth/guard';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+
+class FileUpload {
+  @ApiProperty({ type: 'string', format: 'binary' })
+  file: any;
+}
 
 @ApiTags('flight')
 @Controller('flight')
@@ -54,5 +76,25 @@ export class FlightController {
       toAirport,
       departureDate,
     );
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('photo')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: FileUpload })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination(req, file, callback) {
+          callback(null, 'pictures');
+        },
+        filename(req, file, callback) {
+          callback(null, `${Date.now()}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
+  uploadFile(@UploadedFile() file: Express.Multer.File) {
+    return { filename: file.filename };
   }
 }
